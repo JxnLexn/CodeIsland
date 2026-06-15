@@ -1104,6 +1104,16 @@ final class AppState {
             responseData = Data(response.utf8)
         } else if always {
             let toolName = pending.event.toolName ?? ""
+            // MCP tools (`mcp__server__tool`) don't accept a rule specifier — the
+            // rule must be the bare tool name. Sending `ruleContent: "*"` makes
+            // Claude Code assemble `mcp__server__tool(*)`, which never matches an
+            // actual MCP call, so the "always allow" rule silently fails to
+            // persist and the same approval keeps re-prompting. Non-MCP tools
+            // (Bash/Read/Edit/…) keep the `*` specifier. (#224)
+            var rule: [String: Any] = ["toolName": toolName]
+            if !toolName.hasPrefix("mcp__") {
+                rule["ruleContent"] = "*"
+            }
             let obj: [String: Any] = [
                 "hookSpecificOutput": [
                     "hookEventName": "PermissionRequest",
@@ -1111,7 +1121,7 @@ final class AppState {
                         "behavior": "allow",
                         "updatedPermissions": [[
                             "type": "addRules",
-                            "rules": [["toolName": toolName, "ruleContent": "*"]],
+                            "rules": [rule],
                             "behavior": "allow",
                             "destination": "session"
                         ]]
