@@ -92,6 +92,20 @@ xcrun actool \
     "$REPO_ROOT/Assets.xcassets" \
     "$REPO_ROOT/AppIcon.icon"
 
+# Finder still relies on CFBundleIconFile/AppIcon.icns for some copied or
+# unsigned bundles. Keep a checked-in fallback so CI artifacts do not regress to
+# the generic app icon if actool changes its AppIcon.icon output behavior.
+if [ ! -s "$CONTENTS_DIR/Resources/AppIcon.icns" ]; then
+    if [ -s "$REPO_ROOT/Sources/CodeIsland/Resources/AppIcon.icns" ]; then
+        cp "$REPO_ROOT/Sources/CodeIsland/Resources/AppIcon.icns" \
+            "$CONTENTS_DIR/Resources/AppIcon.icns"
+        echo "==> Copied fallback AppIcon.icns"
+    else
+        echo "ERROR: AppIcon.icns was not generated and no fallback icon exists" >&2
+        exit 1
+    fi
+fi
+
 # Copy SPM resource bundles into Contents/Resources/ — putting them at the .app
 # root breaks Developer ID signing with "unsealed contents present in the bundle
 # root". Bundle.module already checks resourceURL, so this layout loads fine.
